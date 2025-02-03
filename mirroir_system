@@ -1,0 +1,43 @@
+import cv2
+import numpy as np
+import torch
+from torchvision import transforms
+from PIL import Image
+
+# Charger un modèle pré-entraîné (ex: GAN ou Diffusion Model pour virtualisation)
+def load_model(model_path):
+    model = torch.load(model_path, map_location=torch.device('cpu'))
+    model.eval()
+    return model
+
+# Prétraitement de l'image de l'utilisateur
+def preprocess_image(image_path):
+    image = Image.open(image_path).convert("RGB")
+    transform = transforms.Compose([
+        transforms.Resize((512, 512)),
+        transforms.ToTensor(),
+    ])
+    return transform(image).unsqueeze(0)  # Ajouter une dimension batch
+
+# Virtualisation du vêtement sur l'utilisateur
+def virtual_tryon(model, user_image_tensor, clothing_image_tensor):
+    with torch.no_grad():
+        input_tensor = torch.cat((user_image_tensor, clothing_image_tensor), dim=1)
+        output = model(input_tensor)
+    return output.squeeze(0).permute(1, 2, 0).numpy()
+
+if __name__ == "__main__":
+    model_path = "model.pth"  # Chemin vers le modèle pré-entraîné
+    user_image_path = "user.jpg"  # Image de l'utilisateur
+    clothing_image_path = "clothing.png"  # Image du vêtement
+    
+    model = load_model(model_path)
+    user_image_tensor = preprocess_image(user_image_path)
+    clothing_image_tensor = preprocess_image(clothing_image_path)
+    
+    result = virtual_tryon(model, user_image_tensor, clothing_image_tensor)
+    result = (result * 255).astype(np.uint8)
+    
+    cv2.imshow("Virtual Try-On", result)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
